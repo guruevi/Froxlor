@@ -210,7 +210,9 @@ class lighttpd extends HttpConfigBase
 						echo $ip . ':' . $port . ' :: certificate file "' . $domain['ssl_cert_file'] . '" does not exist! Cannot create SSL-directives' . "\n";
 					} else {
 						$this->lighttpd_data[$vhost_filename] .= 'ssl.engine = "enable"' . "\n";
+						$this->lighttpd_data[$vhost_filename] .= 'ssl.use-compression = "disable"' . "\n";
 						$this->lighttpd_data[$vhost_filename] .= 'ssl.use-sslv2 = "disable"' . "\n";
+						$this->lighttpd_data[$vhost_filename] .= 'ssl.use-sslv3 = "disable"' . "\n";
 						$this->lighttpd_data[$vhost_filename] .= 'ssl.cipher-list = "' . Settings::Get('system.ssl_cipher_list') . '"' . "\n";
 						$this->lighttpd_data[$vhost_filename] .= 'ssl.honor-cipher-order = "enable"' . "\n";
 						$this->lighttpd_data[$vhost_filename] .= 'ssl.pemfile = "' . makeCorrectFile($domain['ssl_cert_file']) . '"' . "\n";
@@ -429,11 +431,10 @@ class lighttpd extends HttpConfigBase
 		$domain['documentroot'] = trim($domain['documentroot']);
 
 		if (preg_match('/^https?\:\/\//', $domain['documentroot'])) {
-			$uri = $this->idnaConvert->encode_uri($domain['documentroot']);
-			// prevent empty return-cde
-			$code = "301";
+			$uri = $domain['documentroot'];
+
 			// Get domain's redirect code
-			$code = getDomainRedirectCode($domain['id']);
+			$code = getDomainRedirectCode($domain['id'], '301');
 
 			$vhost_content .= '  url.redirect-code = ' . $code. "\n";
 			$vhost_content .= '  url.redirect = (' . "\n";
@@ -517,7 +518,9 @@ class lighttpd extends HttpConfigBase
 			if ($domain['ssl_cert_file'] != '') {
 
 				$ssl_settings .= 'ssl.engine = "enable"' . "\n";
+				$ssl_settings .= 'ssl.use-compression = "disable"' . "\n";
 				$ssl_settings .= 'ssl.use-sslv2 = "disable"' . "\n";
+				$ssl_settings .= 'ssl.use-sslv3 = "disable"' . "\n";
 				$ssl_settings .= 'ssl.cipher-list = "' . Settings::Get('system.ssl_cipher_list') . '"' . "\n";
 				$ssl_settings .= 'ssl.honor-cipher-order = "enable"' . "\n";
 				$ssl_settings .= 'ssl.pemfile = "' . makeCorrectFile($domain['ssl_cert_file']) . '"' . "\n";
@@ -528,14 +531,14 @@ class lighttpd extends HttpConfigBase
 
 				if ($domain['hsts'] >= 0) {
 
-					$vhost_content .= '$HTTP["scheme"] == "https" { setenv.add-response-header  = ( "Strict-Transport-Security" => "max-age=' . $domain['hsts'];
+					$ssl_settings .= '$HTTP["scheme"] == "https" { setenv.add-response-header  = ( "Strict-Transport-Security" => "max-age=' . $domain['hsts'];
 					if ($domain['hsts_sub'] == 1) {
-						$vhost_content .= '; includeSubDomains';
+						$ssl_settings .= '; includeSubDomains';
 					}
 					if ($domain['hsts_preload'] == 1) {
-						$vhost_content .= '; preload';
+						$ssl_settings .= '; preload';
 					}
-					$vhost_content .= '") }' . "\n";
+					$ssl_settings .= '") }' . "\n";
 				}
 			}
 		}
